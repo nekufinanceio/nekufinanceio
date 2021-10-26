@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 import "./ComptrollerInterface.sol";
 import "./InterestRateModel.sol";
@@ -29,12 +29,12 @@ contract CTokenStorage {
      * @notice Maximum borrow rate that can ever be applied (.0005% / block)
      */
 
-    uint internal constant borrowRateMaxMantissa = 0.0005e16;
+    uint internal constant BORROW_RATE_MAX_MANTISSA = 0.0005e16;
 
     /**
      * @notice Maximum fraction of interest that can be set aside for reserves
      */
-    uint internal constant reserveFactorMaxMantissa = 1e18;
+    uint internal constant RESERVE_FACTOR_MAX_MANTISSA = 1e18;
 
     /**
      * @notice Administrator for this contract
@@ -119,15 +119,17 @@ contract CTokenStorage {
     /**
      * @notice Share of seized collateral that is added to reserves
      */
-    uint public constant protocolSeizeShareMantissa = 2.8e16; //2.8%
-
+    uint public constant PROTOCOL_SEIZE_SHARE_MANTISSA = 2.8e16; //2.8%
+    
+    uint public minExchangeRateMantissa = 1e17;
+    uint public maxExchangeRateMantissa = 1e19;
 }
 
 contract CTokenInterface is CTokenStorage {
     /**
      * @notice Indicator that this is a CToken contract (for inspection)
      */
-    bool public constant isCToken = true;
+    bool public constant IS_CTOKEN = true;
 
 
     /*** Market Events ***/
@@ -229,11 +231,11 @@ contract CTokenInterface is CTokenStorage {
     function supplyRatePerBlock() external view returns (uint);
     function totalBorrowsCurrent() external returns (uint);
     function borrowBalanceCurrent(address account) external returns (uint);
-    function borrowBalanceStored(address account) public view returns (uint);
-    function exchangeRateCurrent() public returns (uint);
-    function exchangeRateStored() public view returns (uint);
+    function borrowBalanceStored(address account) external view returns (uint);
+    function exchangeRateCurrent() external returns (uint);
+    function exchangeRateStored() external view returns (uint);
     function getCash() external view returns (uint);
-    function accrueInterest() public returns (uint);
+    function accrueInterest() external returns (uint);
     function seize(address liquidator, address borrower, uint seizeTokens) external returns (uint);
 
 
@@ -241,10 +243,10 @@ contract CTokenInterface is CTokenStorage {
 
     function _setPendingAdmin(address payable newPendingAdmin) external returns (uint);
     function _acceptAdmin() external returns (uint);
-    function _setComptroller(ComptrollerInterface newComptroller) public returns (uint);
+    function _setComptroller(ComptrollerInterface newComptroller) external returns (uint);
     function _setReserveFactor(uint newReserveFactorMantissa) external returns (uint);
     function _reduceReserves(uint reduceAmount) external returns (uint);
-    function _setInterestRateModel(InterestRateModel newInterestRateModel) public returns (uint);
+    function _setInterestRateModel(InterestRateModel newInterestRateModel) external returns (uint);
 }
 
 contract CErc20Storage {
@@ -292,7 +294,7 @@ contract CDelegatorInterface is CDelegationStorage {
      * @param allowResign Flag to indicate whether to call _resignImplementation on the old implementation
      * @param becomeImplementationData The encoded bytes data to be passed to _becomeImplementation
      */
-    function _setImplementation(address implementation_, bool allowResign, bytes memory becomeImplementationData) public;
+    function _setImplementation(address implementation_, bool allowResign, bytes calldata becomeImplementationData) external;
 }
 
 contract CDelegateInterface is CDelegationStorage {
@@ -301,10 +303,10 @@ contract CDelegateInterface is CDelegationStorage {
      * @dev Should revert if any issues arise which make it unfit for delegation
      * @param data The encoded bytes data for any initialization
      */
-    function _becomeImplementation(bytes memory data) public;
+    function _becomeImplementation(bytes calldata data) external;
 
     /**
      * @notice Called by the delegator on a delegate to forfeit its responsibility
      */
-    function _resignImplementation() public;
+    function _resignImplementation() external;
 }

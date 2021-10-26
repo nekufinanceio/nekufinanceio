@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 import "./ComptrollerInterface.sol";
 import "./CTokenInterfaces.sol";
@@ -41,7 +41,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
 
         // Initialize block number and borrow index (block number mocks depend on comptroller being set)
         accrualBlockNumber = getBlockNumber();
-        borrowIndex = mantissaOne;
+        borrowIndex = MANTISSA_ONE;
 
         // Set the interest rate model (depends on block number / borrow index)
         err = _setInterestRateModelFresh(interestRateModel_);
@@ -364,6 +364,12 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
                 return (mathErr, 0);
             }
 
+            if (exchangeRate.mantissa < minExchangeRateMantissa) {
+                return (MathError.NO_ERROR, minExchangeRateMantissa);
+            }
+            if (exchangeRate.mantissa > maxExchangeRateMantissa) {
+                return (MathError.NO_ERROR, maxExchangeRateMantissa);
+            }
             return (MathError.NO_ERROR, exchangeRate.mantissa);
         }
     }
@@ -399,7 +405,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
 
         /* Calculate the current borrow interest rate */
         uint borrowRateMantissa = interestRateModel.getBorrowRate(cashPrior, borrowsPrior, reservesPrior);
-        require(borrowRateMantissa <= borrowRateMaxMantissa, "borrow rate is absurdly high");
+        require(borrowRateMantissa <= BORROW_RATE_MAX_MANTISSA, "borrow rate is absurdly high");
 
         /* Calculate the number of blocks elapsed since the last accrual */
         (MathError mathErr, uint blockDelta) = subUInt(currentBlockNumber, accrualBlockNumberPrior);
@@ -1082,13 +1088,13 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
             return failOpaque(Error.MATH_ERROR, FailureInfo.LIQUIDATE_SEIZE_BALANCE_DECREMENT_FAILED, uint(vars.mathErr));
         }
 
-        vars.protocolSeizeTokens = mul_(seizeTokens, Exp({mantissa: protocolSeizeShareMantissa}));
+        vars.protocolSeizeTokens = mul_(seizeTokens, Exp({mantissa: PROTOCOL_SEIZE_SHARE_MANTISSA}));
         vars.liquidatorSeizeTokens = sub_(seizeTokens, vars.protocolSeizeTokens);
 
         (vars.mathErr, vars.exchangeRateMantissa) = exchangeRateStoredInternal();
         require(vars.mathErr == MathError.NO_ERROR, "exchange rate math error");
 
-        vars.protocolSeizeAmount = mul_ScalarTruncate(Exp({mantissa: vars.exchangeRateMantissa}), vars.protocolSeizeTokens);
+        vars.protocolSeizeAmount = mulNoErrorScalarTruncate(Exp({mantissa: vars.exchangeRateMantissa}), vars.protocolSeizeTokens);
 
         vars.totalReservesNew = add_(totalReserves, vars.protocolSeizeAmount);
         vars.totalSupplyNew = sub_(totalSupply, vars.protocolSeizeTokens);
@@ -1130,6 +1136,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
       * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
       */
     function _setPendingAdmin(address payable newPendingAdmin) external returns (uint) {
+        require(newPendingAdmin != address(0), "zero address");
         // Check caller = admin
         if (msg.sender != admin) {
             return fail(Error.UNAUTHORIZED, FailureInfo.SET_PENDING_ADMIN_OWNER_CHECK);
@@ -1187,7 +1194,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
 
         ComptrollerInterface oldComptroller = comptroller;
         // Ensure invoke comptroller.isComptroller() returns true
-        require(newComptroller.isComptroller(), "marker method returned false");
+        require(newComptroller.IS_COMPTROLLER(), "marker method returned false");
 
         // Set market's comptroller to newComptroller
         comptroller = newComptroller;
@@ -1230,7 +1237,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         }
 
         // Check newReserveFactor ≤ maxReserveFactor
-        if (newReserveFactorMantissa > reserveFactorMaxMantissa) {
+        if (newReserveFactorMantissa > RESERVE_FACTOR_MAX_MANTISSA) {
             return fail(Error.BAD_INPUT, FailureInfo.SET_RESERVE_FACTOR_BOUNDS_CHECK);
         }
 
@@ -1375,7 +1382,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
      * @param newInterestRateModel the new interest rate model to use
      * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
      */
-    function _setInterestRateModel(InterestRateModel newInterestRateModel) public returns (uint) {
+    function _setInterestRateModel(InterestRateModel newInterestRateModel) external returns (uint) {
         uint error = accrueInterest();
         if (error != uint(Error.NO_ERROR)) {
             // accrueInterest emits logs on errors, but on top of that we want to log the fact that an attempted change of interest rate model failed
@@ -1410,7 +1417,7 @@ contract CToken is CTokenInterface, Exponential, TokenErrorReporter {
         oldInterestRateModel = interestRateModel;
 
         // Ensure invoke newInterestRateModel.isInterestRateModel() returns true
-        require(newInterestRateModel.isInterestRateModel(), "marker method returned false");
+        require(newInterestRateModel.IS_INTEREST_RATE_MODEL(), "marker method returned false");
 
         // Set the interest rate model to newInterestRateModel
         interestRateModel = newInterestRateModel;

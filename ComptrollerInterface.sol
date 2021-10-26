@@ -1,8 +1,8 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 contract ComptrollerInterface {
     /// @notice Indicator that this is a Comptroller contract (for inspection)
-    bool public constant isComptroller = true;
+    bool public constant IS_COMPTROLLER = true;
 
     /*** Assets You Are In ***/
 

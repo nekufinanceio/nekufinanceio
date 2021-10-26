@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 import "./CarefulMath.sol";
 import "./ExponentialNoError.sol";
@@ -18,7 +18,7 @@ contract Exponential is CarefulMath, ExponentialNoError {
      *            or if `denom` is zero.
      */
     function getExp(uint num, uint denom) pure internal returns (MathError, Exp memory) {
-        (MathError err0, uint scaledNumerator) = mulUInt(num, expScale);
+        (MathError err0, uint scaledNumerator) = mulUInt(num, EXP_SCALE);
         if (err0 != MathError.NO_ERROR) {
             return (err0, Exp({mantissa: 0}));
         }
@@ -110,7 +110,7 @@ contract Exponential is CarefulMath, ExponentialNoError {
           Scalar = s;
           `s / (a / b)` = `b * s / a` and since for an Exp `a = mantissa, b = expScale`
         */
-        (MathError err0, uint numerator) = mulUInt(expScale, scalar);
+        (MathError err0, uint numerator) = mulUInt(EXP_SCALE, scalar);
         if (err0 != MathError.NO_ERROR) {
             return (err0, Exp({mantissa: 0}));
         }
@@ -142,12 +142,12 @@ contract Exponential is CarefulMath, ExponentialNoError {
         // We add half the scale before dividing so that we get rounding instead of truncation.
         //  See "Listing 6" and text above it at https://accu.org/index.php/journals/1717
         // Without this change, a result like 6.6...e-19 will be truncated to 0 instead of being rounded to 1e-18.
-        (MathError err1, uint doubleScaledProductWithHalfScale) = addUInt(halfExpScale, doubleScaledProduct);
+        (MathError err1, uint doubleScaledProductWithHalfScale) = addUInt(HALF_EXP_SCALE, doubleScaledProduct);
         if (err1 != MathError.NO_ERROR) {
             return (err1, Exp({mantissa: 0}));
         }
 
-        (MathError err2, uint product) = divUInt(doubleScaledProductWithHalfScale, expScale);
+        (MathError err2, uint product) = divUInt(doubleScaledProductWithHalfScale, EXP_SCALE);
         // The only error `div` can return is MathError.DIVISION_BY_ZERO but we control `expScale` and it is not zero.
         assert(err2 == MathError.NO_ERROR);
 

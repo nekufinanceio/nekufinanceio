@@ -1,4 +1,4 @@
-pragma solidity ^0.5.16;
+pragma solidity >=0.5.16;
 
 import "./ErrorReporter.sol";
 import "./ComptrollerStorage.sol";
@@ -36,7 +36,7 @@ contract Unitroller is UnitrollerAdminStorage, ComptrollerErrorReporter {
 
     /*** Admin Functions ***/
     function _setPendingImplementation(address newPendingImplementation) public returns (uint) {
-
+        require(newPendingImplementation != address(0), "zero address");
         if (msg.sender != admin) {
             return fail(Error.UNAUTHORIZED, FailureInfo.SET_PENDING_IMPLEMENTATION_OWNER_CHECK);
         }
@@ -83,6 +83,7 @@ contract Unitroller is UnitrollerAdminStorage, ComptrollerErrorReporter {
       * @return uint 0=success, otherwise a failure (see ErrorReporter.sol for details)
       */
     function _setPendingAdmin(address newPendingAdmin) public returns (uint) {
+        require(newPendingAdmin != address(0), "zero address");
         // Check caller = admin
         if (msg.sender != admin) {
             return fail(Error.UNAUTHORIZED, FailureInfo.SET_PENDING_ADMIN_OWNER_CHECK);
